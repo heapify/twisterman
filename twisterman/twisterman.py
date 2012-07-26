@@ -1,13 +1,16 @@
+
 from twisted.internet import protocol
 from twisted.application import service
 from twisted.python import log
 from datetime import datetime
 import sys
 from wrappers import Procfile
+from twisted.internet import reactor as _reactor
+
 
 class ProcessProtocol(service.Service, protocol.ProcessProtocol):
 
-    def __init__(self, reactor, name, commandline):
+    def __init__(self, name, commandline, reactor=_reactor):
         self.reactor = reactor
         self.setName(name)
         self.commandline = commandline
@@ -31,7 +34,7 @@ class ProcessProtocol(service.Service, protocol.ProcessProtocol):
 
 
 class ProcessManager(service.MultiService, service.Service):
-    def __init__(self, reactor, procfile="Procfile"):
+    def __init__(self, reactor=_reactor, procfile="Procfile"):
         self.reactor = reactor
         self.procfile = Procfile(procfile)
 
