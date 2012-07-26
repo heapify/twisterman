@@ -6,7 +6,7 @@ from datetime import datetime
 import sys
 from wrappers import Procfile
 from twisted.internet import reactor as _reactor
-
+from twisted.internet import defer
 
 class ProcessProtocol(service.Service, protocol.ProcessProtocol):
 
@@ -87,6 +87,7 @@ class ProcessManager(service.MultiService, service.Service):
         if not self.running:
             return
         self.running = False
+        deferreds = []
         for child in self:
-            child.stopService()
-        self.reactor.stop()
+            deferreds.append(defer.maybeDeferred(child.stopService))
+        return defer.DeferredList(deferreds).addBoth(lambda ignored: self.reactor.stop())
