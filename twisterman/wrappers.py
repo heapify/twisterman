@@ -1,6 +1,6 @@
 import yaml
 
-class SpecFile(object):
+class Procfile(object):
     def __init__(self, name_or_file):
         try:
             data = name_or_file.read()
