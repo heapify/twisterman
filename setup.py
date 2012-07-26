@@ -1,4 +1,5 @@
 import twisterman
+from setuptools import setup, find_packages
 
 setup(
         name = 'twisterman',
