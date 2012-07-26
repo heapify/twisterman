@@ -1,0 +1,12 @@
+#!/usr/bin/python
+from twisted.application import app
+from twisted.python import log
+from twisted.application import service
+from twisted.internet import reactor
+from twisterman.twisterman import ProcessManager
+import sys
+log.startLogging(sys.stdout)
+application = service.Application("twisterman")
+ProcessManager().setServiceParent(application)
+application.startService()
+reactor.run()

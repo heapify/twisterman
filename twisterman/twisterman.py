@@ -87,6 +87,7 @@ class ProcessManager(service.MultiService, service.Service):
         if not self.running:
             return
         self.running = False
+        log.msg("sending SIGTERM to all processes")
         deferreds = []
         for child in self:
             deferreds.append(defer.maybeDeferred(child.stopService))
