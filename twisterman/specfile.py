@@ -1,9 +1,13 @@
 import yaml
 
 class SpecFile(object):
-    def __init__(self, name):
-        with open(name, 'rb') as procfile:
-            self.contents = yaml.load(procfile)
+    def __init__(self, name_or_file):
+        try:
+            data = name_or_file.read()
+        except AttributeError:
+            with open(name_or_file, 'rb') as procfile:
+                data = procfile.read()
+        self.contents = yaml.load(data)
 
     def __iter__(self):
         for key in self.contents:
