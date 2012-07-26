@@ -7,6 +7,7 @@ import sys
 from wrappers import Procfile
 from twisted.internet import reactor as _reactor
 from twisted.internet import defer
+from twisted.python import log
 
 class ProcessProtocol(service.Service, protocol.ProcessProtocol):
 
@@ -56,8 +57,7 @@ class ProcessProtocol(service.Service, protocol.ProcessProtocol):
 
     def printLine(self, message):
         message = message.rstrip()
-        print "%s %s    | %s" % (datetime.now().strftime("%H:%M:%S"), self.name,
-                                 message)
+        log.msg(message, system=self.name)
 
     def startService(self):
         self.reactor.spawnProcess(self, "sh", args=('sh', '-c', self.commandline), env=environ)
@@ -90,4 +90,7 @@ class ProcessManager(service.MultiService, service.Service):
         deferreds = []
         for child in self:
             deferreds.append(defer.maybeDeferred(child.stopService))
-        return defer.DeferredList(deferreds).addBoth(lambda ignored: self.reactor.stop())
+        d = defer.DeferredList(deferreds)
+        d.addErrback(lambda failure: log.err(failure.value))
+        d.addBoth(lambda ignored: self.reactor.stop())
+        return d
