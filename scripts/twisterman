@@ -8,5 +8,5 @@ import sys
 log.startLogging(sys.stdout)
 application = service.Application("twisterman")
 ProcessManager().setServiceParent(application)
-application.startService()
+service.IService(application).startService()
 reactor.run()
