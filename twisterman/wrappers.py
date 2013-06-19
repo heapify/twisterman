@@ -24,9 +24,9 @@ class Container(object):
 
 class Procfile(Container):
     def __init__(self, name_or_file):
-        try:
-            self.contents = yaml.safe_load(name_or_file.read())
-        except AttributeError:
+        if hasattr(name_or_file, "read"):
+            self.contents = yaml.safe_load(name_or_file)
+        else:
             with open(name_or_file, 'rb') as procfile:
                 self.contents = yaml.safe_load(procfile)
 
