@@ -6,8 +6,7 @@ class Procfile(object):
             data = name_or_file.read()
         except AttributeError:
             with open(name_or_file, 'rb') as procfile:
-                data = procfile.read()
-        self.contents = yaml.load(data)
+                self.contents = yaml.safe_load(procfile)
 
     def __iter__(self):
         for key in self.contents:
