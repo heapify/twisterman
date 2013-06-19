@@ -1,6 +1,11 @@
 import yaml
+import errno
+from os import environ
 
 class Container(object):
+    def __init__(self):
+        self.contents = {}
+
     def __iter__(self):
         for key in self.contents:
             yield key
@@ -27,10 +32,17 @@ class Procfile(Container):
 
 class EnvFile(Container):
     def __init__(self, name_or_file):
+        self.contents = {}
+        self.contents.update(environ)
         try:
             data = name_or_file.readlines()
         except AttributeError:
-            with open(name_or_file, 'rbU') as envfile:
-                data = envfile.readlines()
-        self.contents = dict(e.rstrip().split("=") for e in data.split("\n"))
+            try:
+                with open(name_or_file, 'rb') as envfile:
+                    data = envfile.readlines()
+            except IOError as e:
+                if e.errno == errno.ENOENT:
+                    return
+                raise
+        self.contents.update(dict(e.rstrip().split("=") for e in data))
 

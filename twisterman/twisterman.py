@@ -1,10 +1,9 @@
-from os import environ
 from twisted.internet import protocol
 from twisted.application import service
 from twisted.python import log
 from datetime import datetime
 import sys
-from wrappers import Procfile
+from wrappers import Procfile, EnvFile
 from twisted.internet import reactor as _reactor
 from twisted.internet import defer
 from twisted.python import log
@@ -60,7 +59,9 @@ class ProcessProtocol(service.Service, protocol.ProcessProtocol):
         log.msg(message, system=self.name)
 
     def startService(self):
-        self.reactor.spawnProcess(self, "sh", args=('sh', '-c', self.commandline), env=environ)
+        self.reactor.spawnProcess(self, "sh",
+                                  args=('sh', '-c', self.commandline),
+                                  env=self.parent.envfile)
 
 
     def stopService(self):
@@ -68,10 +69,11 @@ class ProcessProtocol(service.Service, protocol.ProcessProtocol):
             self.transport.signalProcess('KILL')
 
 class ProcessManager(service.MultiService, service.Service):
-    def __init__(self, reactor=_reactor, procfile="Procfile"):
+    def __init__(self, reactor=_reactor, procfile="Procfile", envfile=".env"):
         service.MultiService.__init__(self)
         self.reactor = reactor
         self.procfile = Procfile(procfile)
+        self.envfile = EnvFile(envfile)
         self.running = False
 
     def startService(self):
