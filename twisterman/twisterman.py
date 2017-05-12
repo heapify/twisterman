@@ -3,8 +3,9 @@ from twisted.application import service
 import sys
 from wrappers import Procfile, EnvFile
 from twisted.internet import reactor as _reactor
-from twisted.internet import defer
+from twisted.internet import defer, error
 from twisted.python import log
+import signal
 
 class ProcessProtocol(service.Service, protocol.ProcessProtocol):
 
@@ -15,6 +16,8 @@ class ProcessProtocol(service.Service, protocol.ProcessProtocol):
         self.outbuffer = ""
         self.errbuffer = ""
         self.running = False
+        self.kill_switch = None
+        self.process_wait = None
     
     def connectionMade(self):
         self.printLine("started with pid %s" % str(self.transport.pid))
@@ -22,6 +25,15 @@ class ProcessProtocol(service.Service, protocol.ProcessProtocol):
 
     def processExited(self, status):
         self.running = False
+        self.kill_switch, kill_switch = None, self.kill_switch
+        self.process_wait, process_wait = None, self.process_wait
+        if kill_switch is not None:
+            try:
+                kill_switch.cancel()
+            except error.AlreadyCalled:
+                pass
+        if process_wait is not None:
+            process_wait.callback(None)
         if self.errbuffer:
             self.printLine(self.errbuffer)
             self.errbuffer = ""
@@ -60,11 +72,17 @@ class ProcessProtocol(service.Service, protocol.ProcessProtocol):
         self.reactor.spawnProcess(self, "sh",
                                   args=('sh', '-c', self.commandline),
                                   env=self.parent.envfile)
+        self.process_wait = defer.Deferred()
 
-
+    def forceTerminate(self):
+        log.msg("Sending SIGKILL to process that didn't exit")
+        self.transport.signalProcess('KILL')
+        
     def stopService(self):
         if self.running:
-            self.transport.signalProcess('KILL')
+            self.transport.signalProcess('TERM')
+            self.kill_switch = self.reactor.callLater(30, self.forceTerminate)
+        return self.process_wait
 
 class ProcessManager(service.MultiService, service.Service):
     def __init__(self, reactor=_reactor, procfile="Procfile", envfile=".env"):
@@ -72,7 +90,9 @@ class ProcessManager(service.MultiService, service.Service):
         self.reactor = reactor
         self.procfile = Procfile(procfile)
         self.envfile = EnvFile(envfile)
+        self.stop_count = 0
         self.running = False
+        signal.signal(signal.SIGINT, self._signalHandler)
 
     def startService(self):
         if self.running:
@@ -82,19 +102,33 @@ class ProcessManager(service.MultiService, service.Service):
             protocol = ProcessProtocol(name, commandline)
             protocol.setServiceParent(self)
 
+    def _signalHandler(self, signal, _):
+        log.msg("Received signal %s" % signal)
+        self.stopService()
+        self.stop_count += 1
 
     def stopService(self):
         if not self.running:
             return
-        self.running = False
-        log.msg("sending SIGTERM to all processes")
-        deferreds = []
-        for child in self:
-            deferreds.append(defer.maybeDeferred(child.stopService))
-        d = defer.DeferredList(deferreds)
-        d.addErrback(lambda failure: log.err(failure.value))
-        d.addBoth(lambda ignored: self.reactor.stop())
-        return d
+        if self.stop_count > 0:
+            for child in self:
+                if child.running:
+                    child.forceTerminate()
+        else:
+            log.msg("sending SIGTERM to all processes")
+            deferreds = []
+            for child in self:
+                deferreds.append(child.stopService())
+            d = defer.DeferredList(deferreds)
+            d.addErrback(lambda failure: log.err(failure.value))
+            d.addBoth(self._safeTerminateReactor)
+
+    def _safeTerminateReactor(self, _):
+        try:
+            self.running = False
+            self.reactor.stop()
+        except error.ReactorNotRunning:
+            pass
 
 def main():
     log.startLogging(sys.stdout)

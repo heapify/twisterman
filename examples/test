@@ -1,0 +1,12 @@
+#!/bin/python
+import signal
+import threading
+
+def handler(a, b):
+    pass
+
+signal.signal(signal.SIGTERM, handler)
+
+if __name__ == "__main__":
+    event = threading.Event()
+    event.wait()
