@@ -1,7 +1,5 @@
 from twisted.internet import protocol
 from twisted.application import service
-from twisted.python import log
-from datetime import datetime
 import sys
 from wrappers import Procfile, EnvFile
 from twisted.internet import reactor as _reactor
@@ -97,3 +95,10 @@ class ProcessManager(service.MultiService, service.Service):
         d.addErrback(lambda failure: log.err(failure.value))
         d.addBoth(lambda ignored: self.reactor.stop())
         return d
+
+def main():
+    log.startLogging(sys.stdout)
+    application = service.Application("twisterman")
+    ProcessManager().setServiceParent(application)
+    service.IService(application).startService()
+    _reactor.run()

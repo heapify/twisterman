@@ -1,10 +1,14 @@
-import twisterman
 from setuptools import setup, find_packages
 
 setup(
     name = 'twisterman',
-    version = twisterman.__version__,
     packages = find_packages(),
-    scripts = ('scripts/twisterman',),
+    use_scm_version=True,
+    setup_requires=["setuptools_scm"],
+    entry_points={
+        "console_scripts": [
+            "twisterman = twisterman:main"
+        ]
+    },
     install_requires = ['Twisted', 'PyYAML'],
 )
